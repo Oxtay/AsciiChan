@@ -1,8 +1,10 @@
 import os
 import webapp2
 import jinja2
+import urllib2
 from google.appengine.ext import db
-
+from xml.dom import minidom
+from string import letters
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape=True)
 
@@ -14,6 +16,12 @@ class Handler(webapp2.RequestHandler):
         return t.render(params)
     def render(self, template, **kw):
         self.write(self.render_str(template, **kw))
+        
+IP_URL = "http://api.hostip.info/?ip="
+def get_coords():
+    url = IP_URL + ip
+    content = None
+    
         
 class Art(db.Model):
     title = db.StringProperty(required = True)
