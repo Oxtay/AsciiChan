@@ -18,15 +18,27 @@ class Handler(webapp2.RequestHandler):
         self.write(self.render_str(template, **kw))
         
 IP_URL = "http://api.hostip.info/?ip="
-def get_coords():
+def get_coords(ip):
     url = IP_URL + ip
     content = None
+    try:
+        content = urllib2.urlopen(url).read()
+    except URLerror:
+        return
     
+    if content:
+        d = minidom.parseString(content)
+        coord = d.getElementsByTagName('gml:coordinates')
+        if coord and coord[0].childNodes[0].nodeValue:
+            lon, lat = coord[0].childNodes[0].nodeValue.split(',')
+            return db.GeoPt(lat, lon)
+        
         
 class Art(db.Model):
     title = db.StringProperty(required = True)
     art = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
+    coords = db.GeoPtProperty()
 
 class MainPage(Handler):
     def render_front(self, title="", art="", error=""):
@@ -40,6 +52,9 @@ class MainPage(Handler):
         title = self.request.get("title")
         art = self.request.get("art")
         if title and art:
+            coords = get_coords(self.request.remote_addr)
+            if coords:
+                a.coords = coords
             a = Art(title = title, art = art)
             a.put()
             self.redirect("/")
