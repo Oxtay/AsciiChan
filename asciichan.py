@@ -32,6 +32,10 @@ def get_coords(ip):
         if coord and coord[0].childNodes[0].nodeValue:
             lon, lat = coord[0].childNodes[0].nodeValue.split(',')
             return db.GeoPt(lat, lon)
+
+GMAPS_URL = "http://maps.googleapis.com/maps/api/staticmap?size=380x263&sensor=false&"
+def gmaps_url(points):
+    
         
         
 class Art(db.Model):
@@ -43,6 +47,19 @@ class Art(db.Model):
 class MainPage(Handler):
     def render_front(self, title="", art="", error=""):
         arts = db.GqlQuery("SELECT * FROM Art ORDER BY created DESC")
+        
+        # to prevent from running multiple queries
+        arts = list(arts)
+        
+        points = []
+        for a in arts:
+            if a.coords:
+                points.append(a.coords)
+        if points:
+            img_url = gmaps_img(points)
+        
+        #alternative:
+        # points = filter(None, (a.coords for a in arts))
         self.render("front.html", title=title, art=art, error = error)
         
     def get(self):
