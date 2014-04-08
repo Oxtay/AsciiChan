@@ -19,6 +19,7 @@ class Handler(webapp2.RequestHandler):
         
 IP_URL = "http://api.hostip.info/?ip="
 def get_coords(ip):
+    ip = "" # For testing
     url = IP_URL + ip
     content = None
     try:
@@ -34,9 +35,9 @@ def get_coords(ip):
             return db.GeoPt(lat, lon)
 
 GMAPS_URL = "http://maps.googleapis.com/maps/api/staticmap?size=380x263&sensor=false&"
-def gmaps_url(points):
-    
-        
+def gmaps_img(points):
+    markers = '&'.join("markers=%s,%s" % (p.lat, p.lon) for p in points)
+    return GMAPS_URL + markers
         
 class Art(db.Model):
     title = db.StringProperty(required = True)
@@ -55,12 +56,13 @@ class MainPage(Handler):
         for a in arts:
             if a.coords:
                 points.append(a.coords)
+        img_url = None
         if points:
             img_url = gmaps_img(points)
         
         #alternative:
         # points = filter(None, (a.coords for a in arts))
-        self.render("front.html", title=title, art=art, error = error)
+        self.render("front.html", title=title, art=art, error = error, arts = arts, img_url = img_url)
         
     def get(self):
         self.render_front()
@@ -70,9 +72,9 @@ class MainPage(Handler):
         art = self.request.get("art")
         if title and art:
             coords = get_coords(self.request.remote_addr)
+            a = Art(title = title, art = art)
             if coords:
                 a.coords = coords
-            a = Art(title = title, art = art)
             a.put()
             self.redirect("/")
         else:
