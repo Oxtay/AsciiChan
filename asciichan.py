@@ -45,17 +45,29 @@ class Art(db.Model):
     created = db.DateTimeProperty(auto_now_add = True)
     coords = db.GeoPtProperty()
 
-class MainPage(Handler):
-    def render_front(self, title="", art="", error=""):
-        arts = db.GqlQuery("SELECT * FROM Art ORDER BY created DESC")
-        
+CACHE = {}
+def top_arts():
+    key = 'top'
+    if key in CACHE:
+        arts = CACHE[key]
+    else:
+        arts = db.GqlQuery("SELECT * FROM Art ORDER BY created DESC limit 10")
         # to prevent from running multiple queries
         arts = list(arts)
+        CACHE[key] = arts
+    return arts
+    
+class MainPage(Handler):
+    def render_front(self, title="", art="", error=""):
         
+        arts = top_arts()
         points = []
         for a in arts:
             if a.coords:
                 points.append(a.coords)
+        #alternate implementation of the above for loop:
+        #points = filter(None, (a.coords for a in arts)
+        
         img_url = None
         if points:
             img_url = gmaps_img(points)
@@ -76,6 +88,8 @@ class MainPage(Handler):
             if coords:
                 a.coords = coords
             a.put()
+            CACHE.clear()
+            
             self.redirect("/")
         else:
             error = "we need both a title and some artwork!"
