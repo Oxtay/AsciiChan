@@ -2,11 +2,16 @@ import os
 import webapp2
 import jinja2
 import urllib2
-from google.appengine.ext import db
 from xml.dom import minidom
 from string import letters
+
+from google.appengine.ext import db
+from google.appengine.api import memcache
+
+DEBUG = os.environ('SERVER_SOFTWARE').startswith('Development')
+
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape=True)
+jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),                                    autoescape=True)
 
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
@@ -45,16 +50,14 @@ class Art(db.Model):
     created = db.DateTimeProperty(auto_now_add = True)
     coords = db.GeoPtProperty()
 
-CACHE = {}
-def top_arts():
+def top_arts(update = False):
     key = 'top'
-    if key in CACHE:
-        arts = CACHE[key]
-    else:
+    arts = memcache.get(key)
+    if arts is None or update:
         arts = db.GqlQuery("SELECT * FROM Art ORDER BY created DESC limit 10")
         # to prevent from running multiple queries
         arts = list(arts)
-        CACHE[key] = arts
+        memcache.set(key, arts)
     return arts
     
 class MainPage(Handler):
@@ -88,7 +91,9 @@ class MainPage(Handler):
             if coords:
                 a.coords = coords
             a.put()
-            CACHE.clear()
+            #CACHE.clear()
+            # rerun the query and update the cache
+            top_arts(True)
             
             self.redirect("/")
         else:
